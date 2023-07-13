@@ -1,6 +1,6 @@
 // menerapkan library nodeJS
 const functions = require("firebase-functions");
-const { Storage } = require("@google-cloud/storage");
+const {Storage} = require("@google-cloud/storage");
 const UUID = require(("uuid-v4"));
 const express = require("express");
 const formidable = require("formidable-serverless");
@@ -8,14 +8,13 @@ require("dotenv").config();
 
 // menggunakan library express
 const app = express();
-app.use(express.json({ limit: "50mb", extended: true }));
-app.use(express.urlencoded({ extended: false, limit: "50mb" }));
+app.use(express.json({limit: "50mb", extended: true}));
+app.use(express.urlencoded({extended: false, limit: "50mb"}));
+const admin = require("firebase-admin");
 
-const admin = require('firebase-admin');
-
-var serviceAccount = require("./serviceAccount.json");
+const serviceAccount = require("./serviceAccount.json");
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
+  credential: admin.credential.cert(serviceAccount),
 });
 
 // membuat variabel referensi pada table ruangan di firebase
@@ -27,953 +26,912 @@ const angkaRef = admin.firestore().collection("angka");
 
 // menyambungkan storage yang ada pada firebase
 const storage = new Storage({
-    keyFilename: "serviceAccount.json",
+  keyFilename: "serviceAccount.json",
 });
 
-//route tes
-app.get('/', (req, res) => {
-    return res.status(200).send('HALLOO Kamu sudah terhubung')
+// route tes
+app.get("/", (req, res) => {
+  return res.status(200).send("HALLOO Kamu sudah terhubung");
 });
 
-// ruangan * 
-// bangunan * 
-// benda * 
-// rambu * 
-// angka *
-
-//                   ==================================== RUANGAN ===================================                   \\
+// ================= RUANGAN ================= \\
 // ================== POST DATA RUANGAN =================
-app.post('/createRuangan', async (req, res) => {
-    const form = new formidable.IncomingForm({ multiples: true });
-    
-    try {
-        form.parse(req, async (discnt, fields, files) => {
-            let uuid = UUID();
-            var downloadPath =
-                "https://firebasestorage.googleapis.com/v0/b/dbnaviku.appspot.com/o/"
+app.post("/createRuangan", async (req, res) => {
+  const form = new formidable.IncomingForm({multiples: true});
 
-        const qrImage = files.qrImage;
-        const pdfFile = files.pdfFile;
+  try {
+    form.parse(req, async (discnt, fields, files) => {
+      const uuid = new UUID();
+      const downloadPath =
+        "https://firebasestorage.googleapis.com/v0/b/dbnaviku.appspot.com/o/";
 
-        // url untuk gambar yang diunggah 
-        let imageUrl;
-        let pdfUrl;
+      const qrImage = files.qrImage;
+      const pdfFile = files.pdfFile;
 
-        const docID = ruanganRef.doc().id;
+      // url untuk gambar yang diunggah
+      let imageUrl;
+      let pdfUrl;
 
-        if(discnt) {
-            return res.status(400).json({
-                message: "Terdapat error pada saat pengunggahan file",
-                data: {},
-                error: discnt,
-              });
-        }
-        const bucket = storage.bucket("gs://dbnaviku.appspot.com");
+      const docID = ruanganRef.doc().id;
 
-        if (qrImage.size & pdfFile.size == 0) {
-            //  tida ada yang dikerjakan 
-        } 
-        else {
-            const imageRespons = await bucket.upload(qrImage.path, {
-                destination: `ruangan/${qrImage.name}`,
-                resumable: true,
-                metadata: {
-                    metadata: {
-                        firebaseStorageDownloadTokens: uuid,
-                    },
-                },
-            });
-
-            const pdfRespons = await bucket.upload(pdfFile.path, {
-                destination: `ruangan/${pdfFile.name}`,
-                resumable: true,
-                metadata: {
-                    metadata: {
-                        firebaseStorageDownloadTokens: uuid,
-                    },
-                },
-            });
-
-            // url gambar qr
-            imageUrl = 
-                downloadPath + 
-                encodeURIComponent(imageRespons[0].name) + 
-                "?alt=media&token=" + 
-                uuid;
-
-            pdfUrl = 
-                downloadPath + 
-                encodeURIComponent(pdfRespons[0].name) + 
-                "?alt=media&token=" + 
-                uuid;
-        }
-
-        // objek untuk dikirim ke database
-        const ruanganModel = {
-            id: docID,
-            name: fields.name,
-            qrImage: qrImage.size == 0 ? "" : imageUrl,
-            pdfFile: pdfFile.size == 0 ? "" : pdfUrl,
-        };
-
-        await ruanganRef
-            .doc(docID)
-            .set(ruanganModel, { merge: true })
-            .then((value) => {
-                // return respon ke pengguna
-                res.status(200).send({
-                    message: "Data telah berhasil dimasukan",
-                    data: ruanganModel,
-                    error: {},
-                });
-            });
+      if (discnt) {
+        return res.status(400).json({
+          message: "Terdapat error pada saat pengunggahan file",
+          data: {},
+          error: discnt,
         });
-    } 
-    
-    catch (discnt) {
-        res.send({
-            message: "Terjadi error",
-            data: {},
-            error: discnt
+      }
+      const bucket = storage.bucket("gs://dbnaviku.appspot.com");
+
+      if (qrImage.size & pdfFile.size == 0) {
+        //  tida ada yang dikerjakan
+      } else {
+        const imageRespons = await bucket.upload(qrImage.path, {
+          destination: `ruangan/${qrImage.name}`,
+          resumable: true,
+          metadata: {
+            metadata: {
+              firebaseStorageDownloadTokens: uuid,
+            },
+          },
         });
-    }
+
+        const pdfRespons = await bucket.upload(pdfFile.path, {
+          destination: `ruangan/${pdfFile.name}`,
+          resumable: true,
+          metadata: {
+            metadata: {
+              firebaseStorageDownloadTokens: uuid,
+            },
+          },
+        });
+
+        // url gambar qr
+        imageUrl =
+          downloadPath +
+          encodeURIComponent(imageRespons[0].name) +
+          "?alt=media&token=" +
+          uuid;
+
+        pdfUrl =
+          downloadPath +
+          encodeURIComponent(pdfRespons[0].name) +
+          "?alt=media&token=" +
+          uuid;
+      }
+
+      // objek untuk dikirim ke database
+      const ruanganModel = {
+        id: docID,
+        name: fields.name,
+        qrImage: qrImage.size == 0 ? "" : imageUrl,
+        pdfFile: pdfFile.size == 0 ? "" : pdfUrl,
+      };
+
+      await ruanganRef
+          .doc(docID)
+          .set(ruanganModel, {merge: true})
+          .then((value) => {
+            // return respon ke pengguna
+            res.status(200).send({
+              message: "Data telah berhasil dimasukan",
+              data: ruanganModel,
+              error: {},
+            });
+          });
+    });
+  } catch (discnt) {
+    res.send({
+      message: "Terjadi error",
+      data: {},
+      error: discnt,
+    });
+  }
 });
 
 // ================== post file rar =================
-app.post('/createAllRuangan', async (req, res) => {
-    const form = new formidable.IncomingForm({ multiples: true });
-    
-    try {
-        form.parse(req, async (discnt, fields, files) => {
-            let uuid = UUID();
-            var downloadPath =
-                "https://firebasestorage.googleapis.com/v0/b/dbnaviku.appspot.com/o/"
+app.post("/createAllRuangan", async (req, res) => {
+  const form = new formidable.IncomingForm({multiples: true});
 
-        const rarFile = files.rarFile;
+  try {
+    form.parse(req, async (discnt, fields, files) => {
+      const uuid = new UUID();
+      const downloadPath =
+        "https://firebasestorage.googleapis.com/v0/b/dbnaviku.appspot.com/o/";
 
-        // url untuk file rar yang diunggah 
-        let rarUrl;
+      const rarFile = files.rarFile;
 
-        const docID = ruanganRef.doc().id;
+      // url untuk file rar yang diunggah
+      let rarUrl;
 
-        if(discnt) {
-            return res.status(400).json({
-                message: "Terdapat error pada saat pengunggahan file",
-                data: {},
-                error: discnt,
-              });
-        }
-        const bucket = storage.bucket("gs://dbnaviku.appspot.com");
+      const docID = ruanganRef.doc().id;
 
-        if (rarFile == 0) {
-            //  tida ada yang dikerjakan 
-        } 
-        else {
-            const rarRespons = await bucket.upload(rarFile.path, {
-                destination: `ruangan/${rarFile.name}`,
-                resumable: true,
-                metadata: {
-                    metadata: {
-                        firebaseStorageDownloadTokens: uuid,
-                    },
-                },
-            });
-
-            // url gambar qr
-            rarUrl = 
-                downloadPath + 
-                encodeURIComponent(rarRespons[0].name) + 
-                "?alt=media&token=" + 
-                uuid;
-        }
-
-        // objek untuk dikirim ke database
-        const ruanganModel = {
-            id: docID,
-            rarFile: rarFile.size == 0 ? "" : rarUrl,
-        };
-
-        await ruanganRef
-            .doc(docID)
-            .set(ruanganModel, { merge: true })
-            .then((value) => {
-                // return respon ke pengguna
-                res.status(200).send({
-                    message: "Data telah berhasil dimasukan",
-                    data: ruanganModel,
-                    error: {},
-                });
-            });
+      if (discnt) {
+        return res.status(400).json({
+          message: "Terdapat error pada saat pengunggahan file",
+          data: {},
+          error: discnt,
         });
-    } 
-    
-    catch (discnt) {
-        res.send({
-            message: "Terjadi error",
-            data: {},
-            error: discnt
+      }
+      const bucket = storage.bucket("gs://dbnaviku.appspot.com");
+
+      if (rarFile == 0) {
+        // tida ada yang dikerjakan
+      } else {
+        const rarRespons = await bucket.upload(rarFile.path, {
+          destination: `ruangan/${rarFile.name}`,
+          resumable: true,
+          metadata: {
+            metadata: {
+              firebaseStorageDownloadTokens: uuid,
+            },
+          },
         });
-    }
+
+        // url gambar qr
+        rarUrl =
+          downloadPath +
+          encodeURIComponent(rarRespons[0].name) +
+          "?alt=media&token=" +
+          uuid;
+      }
+
+      // objek untuk dikirim ke database
+      const ruanganModel = {
+        id: docID,
+        rarFile: rarFile.size == 0 ? "" : rarUrl,
+      };
+
+      await ruanganRef
+          .doc(docID)
+          .set(ruanganModel, {merge: true})
+          .then((value) => {
+            // return respon ke pengguna
+            res.status(200).send({
+              message: "Data telah berhasil dimasukan",
+              data: ruanganModel,
+              error: {},
+            });
+          });
+    });
+  } catch (discnt) {
+    res.send({
+      message: "Terjadi error",
+      data: {},
+      error: discnt,
+    });
+  }
 });
 
 
 // ================== get all data ruangan =================
-app.get('/ruangan', async (req, res, next) => {
-    await ruanganRef.get().then((value) => {
-        const data = value.docs.map((doc) => doc.data());
-        res.status(200).send({
-            message: "Fetch All Ruangan",
-            data: data,
-        });
+app.get("/ruangan", async (req, res, next) => {
+  await ruanganRef.get().then((value) => {
+    const data = value.docs.map((doc) => doc.data());
+    res.status(200).send({
+      message: "Fetch All Ruangan",
+      data: data,
     });
+  });
 });
 
-// ================== get ruangan ================= 
-app.get('/ruangan/:id', async (req, res, next) => {
-    await ruanganRef 
-    .where("id", "==", req.params.id)
-    .get()
-    .then((value) => {
+// ================== get ruangan =================
+app.get("/ruangan/:id", async (req, res, next) => {
+  await ruanganRef
+      .where("id", "==", req.params.id)
+      .get()
+      .then((value) => {
         const data = value.docs.map((doc) => doc.data());
         res.status(200).send({
-            message: "Ruangan data",
-            data: data,
-        })
-    })
+          message: "Ruangan data",
+          data: data,
+        });
+      });
 });
 
 
-
-//                   ==================================== BANGUNAN ===================================                  \\
+// ================= BANGUNAN ================= \\
 // ================== POST DATA BANGUNAN =================
-app.post('/createBangunan', async (req, res) => {
-    const form = new formidable.IncomingForm({ multiples: true });
-    
-    try {
-        form.parse(req, async (discnt, fields, files) => {
-            let uuid = UUID();
-            var downloadPath =
-                "https://firebasestorage.googleapis.com/v0/b/gs://dbnaviku.appspot.com/o/"
+app.post("/createBangunan", async (req, res) => {
+  const form = new formidable.IncomingForm({multiples: true});
 
-        const qrImage = files.qrImage;
-        const pdfFile = files.pdfFile;
+  try {
+    form.parse(req, async (discnt, fields, files) => {
+      const uuid = new UUID();
+      const downloadPath =
+        "https://firebasestorage.googleapis.com/v0/b/gs://dbnaviku.appspot.com/o/";
 
-        // url untuk gambar yang diunggah 
-        let imageUrl;
-        let pdfUrl;
+      const qrImage = files.qrImage;
+      const pdfFile = files.pdfFile;
 
-        const docID = bangunanRef.doc().id;
+      // url untuk gambar yang diunggah
+      let imageUrl;
+      let pdfUrl;
 
-        if(discnt) {
-            return res.status(400).json({
-                message: "Terdapat error pada saat pengunggahan file",
-                data: {},
-                error: discnt,
-              });
-        }
-        const bucket = storage.bucket("gs://dbnaviku.appspot.com")
+      const docID = bangunanRef.doc().id;
 
-        if (qrImage.size & pdfFile.size == 0) {
-            //  tida ada yang dikerjakan 
-        } 
-        else {
-            const imageRespons = await bucket.upload(qrImage.path, {
-                destination: `bangunan/${qrImage.name}`,
-                resumable: true,
-                metadata: {
-                    metadata: {
-                        firebaseStorageDownloadTokens: uuid,
-                    },
-                },
-            });
-
-            const pdfRespons = await bucket.upload(pdfFile.path, {
-                destination: `bangunan/${pdfFile.name}`,
-                resumable: true,
-                metadata: {
-                    metadata: {
-                        firebaseStorageDownloadTokens: uuid,
-                    },
-                },
-            });
-
-            // url gambar qr
-            imageUrl = 
-                downloadPath + 
-                encodeURIComponent(imageRespons[0].name) + 
-                "?alt=media&token=" + 
-                uuid;
-
-            pdfUrl = 
-                downloadPath + 
-                encodeURIComponent(pdfRespons[0].name) + 
-                "?alt=media&token=" + 
-                uuid;
-        }
-
-        // objek untuk dikirim ke database
-        const bangunanModel = {
-            id: docID,
-            name: fields.name,
-            qrImage: qrImage.size == 0 ? "" : imageUrl,
-            pdfFile: pdfFile.size == 0 ? "" : pdfUrl,
-        };
-
-        await bangunanRef
-            .doc(docID)
-            .set(bangunanModel, { merge: true })
-            .then((value) => {
-                // return respon ke pengguna
-                res.status(200).send({
-                    message: "Data telah berhasil dimasukan",
-                    data: bangunanModel,
-                    error: {},
-                });
-            });
+      if (discnt) {
+        return res.status(400).json({
+          message: "Terdapat error pada saat pengunggahan file",
+          data: {},
+          error: discnt,
         });
-    } 
+      }
+      const bucket = storage.bucket("gs://dbnaviku.appspot.com");
 
-    catch (discnt) {
-        res.send({
-            message: "Terjadi error",
-            data: {},
-            error: discnt
+      if (qrImage.size & pdfFile.size == 0) {
+        //  tida ada yang dikerjakan
+      } else {
+        const imageRespons = await bucket.upload(qrImage.path, {
+          destination: `bangunan/${qrImage.name}`,
+          resumable: true,
+          metadata: {
+            metadata: {
+              firebaseStorageDownloadTokens: uuid,
+            },
+          },
         });
-    }
+
+        const pdfRespons = await bucket.upload(pdfFile.path, {
+          destination: `bangunan/${pdfFile.name}`,
+          resumable: true,
+          metadata: {
+            metadata: {
+              firebaseStorageDownloadTokens: uuid,
+            },
+          },
+        });
+
+        // url gambar qr
+        imageUrl =
+          downloadPath +
+          encodeURIComponent(imageRespons[0].name) +
+          "?alt=media&token=" +
+          uuid;
+
+        pdfUrl =
+          downloadPath +
+          encodeURIComponent(pdfRespons[0].name) +
+          "?alt=media&token=" +
+          uuid;
+      }
+
+      // objek untuk dikirim ke database
+      const bangunanModel = {
+        id: docID,
+        name: fields.name,
+        qrImage: qrImage.size == 0 ? "" : imageUrl,
+        pdfFile: pdfFile.size == 0 ? "" : pdfUrl,
+      };
+
+      await bangunanRef
+          .doc(docID)
+          .set(bangunanModel, {merge: true})
+          .then((value) => {
+            // return respon ke pengguna
+            res.status(200).send({
+              message: "Data telah berhasil dimasukan",
+              data: bangunanModel,
+              error: {},
+            });
+          });
+    });
+  } catch (discnt) {
+    res.send({
+      message: "Terjadi error",
+      data: {},
+      error: discnt,
+    });
+  }
 });
 
 // ================== post file rar =================
-app.post('/createAllBangunan', async (req, res) => {
-    const form = new formidable.IncomingForm({ multiples: true });
-    
-    try {
-        form.parse(req, async (discnt, fields, files) => {
-            let uuid = UUID();
-            var downloadPath =
-                "https://firebasestorage.googleapis.com/v0/b/dbnaviku.appspot.com/o/"
+app.post("/createAllBangunan", async (req, res) => {
+  const form = new formidable.IncomingForm({multiples: true});
 
-        const rarFile = files.rarFile;
+  try {
+    form.parse(req, async (discnt, fields, files) => {
+      const uuid = new UUID();
+      const downloadPath =
+        "https://firebasestorage.googleapis.com/v0/b/dbnaviku.appspot.com/o/";
 
-        // url untuk file rar yang diunggah 
-        let rarUrl;
+      const rarFile = files.rarFile;
 
-        const docID = bangunanRef.doc().id;
+      // url untuk file rar yang diunggah
+      let rarUrl;
 
-        if(discnt) {
-            return res.status(400).json({
-                message: "Terdapat error pada saat pengunggahan file",
-                data: {},
-                error: discnt,
-              });
-        }
-        const bucket = storage.bucket("gs://dbnaviku.appspot.com");
+      const docID = bangunanRef.doc().id;
 
-        if (rarFile == 0) {
-            //  tida ada yang dikerjakan 
-        } 
-        else {
-            const rarRespons = await bucket.upload(rarFile.path, {
-                destination: `bangunan/${rarFile.name}`,
-                resumable: true,
-                metadata: {
-                    metadata: {
-                        firebaseStorageDownloadTokens: uuid,
-                    },
-                },
-            });
-
-            // url gambar qr
-            rarUrl = 
-                downloadPath + 
-                encodeURIComponent(rarRespons[0].name) + 
-                "?alt=media&token=" + 
-                uuid;
-        }
-
-        // objek untuk dikirim ke database
-        const bangunanModel = {
-            id: docID,
-            rarFile: rarFile.size == 0 ? "" : rarUrl,
-        };
-
-        await bangunanRef
-            .doc(docID)
-            .set(bangunanModel, { merge: true })
-            .then((value) => {
-                // return respon ke pengguna
-                res.status(200).send({
-                    message: "Data telah berhasil dimasukan",
-                    data: bangunanModel,
-                    error: {},
-                });
-            });
+      if (discnt) {
+        return res.status(400).json({
+          message: "Terdapat error pada saat pengunggahan file",
+          data: {},
+          error: discnt,
         });
-    } 
-    
-    catch (discnt) {
-        res.send({
-            message: "Terjadi error",
-            data: {},
-            error: discnt
+      }
+      const bucket = storage.bucket("gs://dbnaviku.appspot.com");
+
+      if (rarFile == 0) {
+        //  tida ada yang dikerjakan
+      } else {
+        const rarRespons = await bucket.upload(rarFile.path, {
+          destination: `bangunan/${rarFile.name}`,
+          resumable: true,
+          metadata: {
+            metadata: {
+              firebaseStorageDownloadTokens: uuid,
+            },
+          },
         });
-    }
+
+        // url gambar qr
+        rarUrl =
+          downloadPath +
+          encodeURIComponent(rarRespons[0].name) +
+          "?alt=media&token=" +
+          uuid;
+      }
+
+      // objek untuk dikirim ke database
+      const bangunanModel = {
+        id: docID,
+        rarFile: rarFile.size == 0 ? "" : rarUrl,
+      };
+
+      await bangunanRef
+          .doc(docID)
+          .set(bangunanModel, {merge: true})
+          .then((value) => {
+            // return respon ke pengguna
+            res.status(200).send({
+              message: "Data telah berhasil dimasukan",
+              data: bangunanModel,
+              error: {},
+            });
+          });
+    });
+  } catch (discnt) {
+    res.send({
+      message: "Terjadi error",
+      data: {},
+      error: discnt,
+    });
+  }
 });
 
 
 // ================== get all data bangunan =================
-app.get('/bangunan', async (req, res, next) => {
-    await bangunanRef.get().then((value) => {
-        const data = value.docs.map((doc) => doc.data());
-        res.status(200).send({
-            message: "Fetch All Bangunan",
-            data: data,
-        });
+app.get("/bangunan", async (req, res, next) => {
+  await bangunanRef.get().then((value) => {
+    const data = value.docs.map((doc) => doc.data());
+    res.status(200).send({
+      message: "Fetch All Bangunan",
+      data: data,
     });
+  });
 });
 
-// ================== get bangunan ================= 
-app.get('/bangunan/:id', async (req, res, next) => {
-    await bangunanRef 
-    .where("id", "==", req.params.id)
-    .get()
-    .then((value) => {
+// ================== get bangunan =================
+app.get("/bangunan/:id", async (req, res, next) => {
+  await bangunanRef
+      .where("id", "==", req.params.id)
+      .get()
+      .then((value) => {
         const data = value.docs.map((doc) => doc.data());
         res.status(200).send({
-            message: "Ruangan data ",
-            data: data,
-        })
-    })
+          message: "Ruangan data ",
+          data: data,
+        });
+      });
 });
 
-
-
-//                   ==================================== RAMBU ===================================                    \\
+// ================= RAMBU ================= \\
 // ================== POST DATA RAMBU =================
-app.post('/createRambu', async (req, res) => {
-    const form = new formidable.IncomingForm({ multiples: true });
-    
-    try {
-        form.parse(req, async (discnt, fields, files) => {
-            let uuid = UUID();
-            var downloadPath =
-                "https://firebasestorage.googleapis.com/v0/b/gs://dbnaviku.appspot.com/o/"
+app.post("/createRambu", async (req, res) => {
+  const form = new formidable.IncomingForm({multiples: true});
 
-        const qrImage = files.qrImage;
-        const pdfFile = files.pdfFile;
+  try {
+    form.parse(req, async (discnt, fields, files) => {
+      const uuid = new UUID();
+      const downloadPath =
+        "https://firebasestorage.googleapis.com/v0/b/gs://dbnaviku.appspot.com/o/";
 
-        // url untuk gambar yang diunggah 
-        let imageUrl;
-        let pdfUrl;
+      const qrImage = files.qrImage;
+      const pdfFile = files.pdfFile;
 
-        const docID = rambuRef.doc().id;
+      // url untuk gambar yang diunggah
+      let imageUrl;
+      let pdfUrl;
 
-        if(discnt) {
-            return res.status(400).json({
-                message: "Terdapat error pada saat pengunggahan file",
-                data: {},
-                error: discnt,
-              });
-        }
-        const bucket = storage.bucket("gs://dbnaviku.appspot.com")
+      const docID = rambuRef.doc().id;
 
-        if (qrImage.size & pdfFile.size == 0) {
-            //  tida ada yang dikerjakan 
-        } 
-        else {
-            const imageRespons = await bucket.upload(qrImage.path, {
-                destination: `rambu/${qrImage.name}`,
-                resumable: true,
-                metadata: {
-                    metadata: {
-                        firebaseStorageDownloadTokens: uuid,
-                    },
-                },
-            });
-
-            const pdfRespons = await bucket.upload(pdfFile.path, {
-                destination: `rambu/${pdfFile.name}`,
-                resumable: true,
-                metadata: {
-                    metadata: {
-                        firebaseStorageDownloadTokens: uuid,
-                    },
-                },
-            });
-
-            // url gambar qr
-            imageUrl = 
-                downloadPath + 
-                encodeURIComponent(imageRespons[0].name) + 
-                "?alt=media&token=" + 
-                uuid;
-
-            pdfUrl = 
-                downloadPath + 
-                encodeURIComponent(pdfRespons[0].name) + 
-                "?alt=media&token=" + 
-                uuid;
-        }
-
-        // objek untuk dikirim ke database
-        const rambuModel = {
-            id: docID,
-            name: fields.name,
-            qrImage: qrImage.size == 0 ? "" : imageUrl,
-            pdfFile: pdfFile.size == 0 ? "" : pdfUrl,
-        };
-
-        await rambuRef
-            .doc(docID)
-            .set(rambuModel, { merge: true })
-            .then((value) => {
-                // return respon ke pengguna
-                res.status(200).send({
-                    message: "Data telah berhasil dimasukan",
-                    data: rambuModel,
-                    error: {},
-                });
-            });
+      if (discnt) {
+        return res.status(400).json({
+          message: "Terdapat error pada saat pengunggahan file",
+          data: {},
+          error: discnt,
         });
-    } 
-    
-    catch (discnt) {
-        res.send({
-            message: "Terjadi error",
-            data: {},
-            error: discnt
+      }
+      const bucket = storage.bucket("gs://dbnaviku.appspot.com");
+
+      if (qrImage.size & pdfFile.size == 0) {
+        //  tida ada yang dikerjakan
+      } else {
+        const imageRespons = await bucket.upload(qrImage.path, {
+          destination: `rambu/${qrImage.name}`,
+          resumable: true,
+          metadata: {
+            metadata: {
+              firebaseStorageDownloadTokens: uuid,
+            },
+          },
         });
-    }
+
+        const pdfRespons = await bucket.upload(pdfFile.path, {
+          destination: `rambu/${pdfFile.name}`,
+          resumable: true,
+          metadata: {
+            metadata: {
+              firebaseStorageDownloadTokens: uuid,
+            },
+          },
+        });
+
+        // url gambar qr
+        imageUrl =
+          downloadPath +
+          encodeURIComponent(imageRespons[0].name) +
+          "?alt=media&token=" +
+          uuid;
+
+        pdfUrl =
+          downloadPath +
+          encodeURIComponent(pdfRespons[0].name) +
+          "?alt=media&token=" +
+          uuid;
+      }
+
+      // objek untuk dikirim ke database
+      const rambuModel = {
+        id: docID,
+        name: fields.name,
+        qrImage: qrImage.size == 0 ? "" : imageUrl,
+        pdfFile: pdfFile.size == 0 ? "" : pdfUrl,
+      };
+
+      await rambuRef
+          .doc(docID)
+          .set(rambuModel, {merge: true})
+          .then((value) => {
+            // return respon ke pengguna
+            res.status(200).send({
+              message: "Data telah berhasil dimasukan",
+              data: rambuModel,
+              error: {},
+            });
+          });
+    });
+  } catch (discnt) {
+    res.send({
+      message: "Terjadi error",
+      data: {},
+      error: discnt,
+    });
+  }
 });
 
 // ================== POST file rar =================
-app.post('/createAllRambu', async (req, res) => {
-    const form = new formidable.IncomingForm({ multiples: true });
-    
-    try {
-        form.parse(req, async (discnt, fields, files) => {
-            let uuid = UUID();
-            var downloadPath =
-                "https://firebasestorage.googleapis.com/v0/b/dbnaviku.appspot.com/o/"
+app.post("/createAllRambu", async (req, res) => {
+  const form = new formidable.IncomingForm({multiples: true});
 
-        const rarFile = files.rarFile;
+  try {
+    form.parse(req, async (discnt, fields, files) => {
+      const uuid = new UUID();
+      const downloadPath =
+        "https://firebasestorage.googleapis.com/v0/b/dbnaviku.appspot.com/o/";
 
-        // url untuk file rar yang diunggah 
-        let rarUrl;
+      const rarFile = files.rarFile;
 
-        const docID = rambuRef.doc().id;
+      // url untuk file rar yang diunggah
+      let rarUrl;
 
-        if(discnt) {
-            return res.status(400).json({
-                message: "Terdapat error pada saat pengunggahan file",
-                data: {},
-                error: discnt,
-              });
-        }
-        const bucket = storage.bucket("gs://dbnaviku.appspot.com");
+      const docID = rambuRef.doc().id;
 
-        if (rarFile == 0) {
-            //  tida ada yang dikerjakan 
-        } 
-        else {
-            const rarRespons = await bucket.upload(rarFile.path, {
-                destination: `rambu/${rarFile.name}`,
-                resumable: true,
-                metadata: {
-                    metadata: {
-                        firebaseStorageDownloadTokens: uuid,
-                    },
-                },
-            });
-
-            // url gambar qr
-            rarUrl = 
-                downloadPath + 
-                encodeURIComponent(rarRespons[0].name) + 
-                "?alt=media&token=" + 
-                uuid;
-        }
-
-        // objek untuk dikirim ke database
-        const rambuModel = {
-            id: docID,
-            rarFile: rarFile.size == 0 ? "" : rarUrl,
-        };
-
-        await rambuRef
-            .doc(docID)
-            .set(rambuModel, { merge: true })
-            .then((value) => {
-                // return respon ke pengguna
-                res.status(200).send({
-                    message: "Data telah berhasil dimasukan",
-                    data: rambuModel,
-                    error: {},
-                });
-            });
+      if (discnt) {
+        return res.status(400).json({
+          message: "Terdapat error pada saat pengunggahan file",
+          data: {},
+          error: discnt,
         });
-    } 
-    
-    catch (discnt) {
-        res.send({
-            message: "Terjadi error",
-            data: {},
-            error: discnt
+      }
+      const bucket = storage.bucket("gs://dbnaviku.appspot.com");
+
+      if (rarFile == 0) {
+        //  tida ada yang dikerjakan
+      } else {
+        const rarRespons = await bucket.upload(rarFile.path, {
+          destination: `rambu/${rarFile.name}`,
+          resumable: true,
+          metadata: {
+            metadata: {
+              firebaseStorageDownloadTokens: uuid,
+            },
+          },
         });
-    }
+
+        // url gambar qr
+        rarUrl =
+          downloadPath +
+          encodeURIComponent(rarRespons[0].name) +
+          "?alt=media&token=" +
+          uuid;
+      }
+
+      // objek untuk dikirim ke database
+      const rambuModel = {
+        id: docID,
+        rarFile: rarFile.size == 0 ? "" : rarUrl,
+      };
+
+      await rambuRef
+          .doc(docID)
+          .set(rambuModel, {merge: true})
+          .then((value) => {
+            // return respon ke pengguna
+            res.status(200).send({
+              message: "Data telah berhasil dimasukan",
+              data: rambuModel,
+              error: {},
+            });
+          });
+    });
+  } catch (discnt) {
+    res.send({
+      message: "Terjadi error",
+      data: {},
+      error: discnt,
+    });
+  }
 });
 
 // ================== get all data rambu ==============
-app.get('/rambu', async (req, res, next) => {
-    await rambuRef.get().then((value) => {
-        const data = value.docs.map((doc) => doc.data());
-        res.status(200).send({
-            message: "Fetch All Rambu",
-            data: data,
-        });
+app.get("/rambu", async (req, res, next) => {
+  await rambuRef.get().then((value) => {
+    const data = value.docs.map((doc) => doc.data());
+    res.status(200).send({
+      message: "Fetch All Rambu",
+      data: data,
     });
+  });
 });
 
-// ================== get rambu ================= 
-app.get('/rambu/:id', async (req, res, next) => {
-    await rambuRef 
-    .where("id", "==", req.params.id)
-    .get()
-    .then((value) => {
+// ================== get rambu =================
+app.get("/rambu/:id", async (req, res, next) => {
+  await rambuRef
+      .where("id", "==", req.params.id)
+      .get()
+      .then((value) => {
         const data = value.docs.map((doc) => doc.data());
         res.status(200).send({
-            message: "Ruangan data ",
-            data: data,
-        })
-    })
+          message: "Ruangan data ",
+          data: data,
+        });
+      });
 });
 
-
-
-//                   ==================================== BENDA ===================================                   \\
+// ================= BENDA ================= \\
 // ================== POST DATA BENDA =================
-app.post('/createBenda', async (req, res) => {
-    const form = new formidable.IncomingForm({ multiples: true });
+app.post("/createBenda", async (req, res) => {
+  const form = new formidable.IncomingForm({multiples: true});
 
-    try {
-        form.parse(req, async (discnt, fields, files) => {
-            let uuid = UUID();
-            var downloadPath =
-                "https://firebasestorage.googleapis.com/v0/b/gs://dbnaviku.appspot.com/o/"
+  try {
+    form.parse(req, async (discnt, fields, files) => {
+      const uuid = new UUID();
+      const downloadPath =
+        "https://firebasestorage.googleapis.com/v0/b/gs://dbnaviku.appspot.com/o/";
 
-        const qrImage = files.qrImage;
-        const pdfFile = files.pdfFile;
+      const qrImage = files.qrImage;
+      const pdfFile = files.pdfFile;
 
-        // url untuk gambar yang diunggah 
-        let imageUrl;
-        let pdfUrl;
+      // url untuk gambar yang diunggah
+      let imageUrl;
+      let pdfUrl;
 
-        const docID = bendaRef.doc().id;
+      const docID = bendaRef.doc().id;
 
-        if(discnt) {
-            return res.status(400).json({
-                message: "Terdapat error pada saat pengunggahan file",
-                data: {},
-                error: discnt,
-              });
-        }
-        const bucket = storage.bucket("gs://dbnaviku.appspot.com")
-
-        if (qrImage.size & pdfFile.size == 0) {
-            //  tida ada yang dikerjakan 
-        } 
-        else {
-            const imageRespons = await bucket.upload(qrImage.path, {
-                destination: `benda/${qrImage.name}`,
-                resumable: true,
-                metadata: {
-                    metadata: {
-                        firebaseStorageDownloadTokens: uuid,
-                    },
-                },
-            });
-
-            const pdfRespons = await bucket.upload(pdfFile.path, {
-                destination: `benda/${pdfFile.name}`,
-                resumable: true,
-                metadata: {
-                    metadata: {
-                        firebaseStorageDownloadTokens: uuid,
-                    },
-                },
-            });
-
-            // url gambar qr
-            imageUrl = 
-                downloadPath + 
-                encodeURIComponent(imageRespons[0].name) + 
-                "?alt=media&token=" + 
-                uuid;
-
-            pdfUrl = 
-                downloadPath + 
-                encodeURIComponent(pdfRespons[0].name) + 
-                "?alt=media&token=" + 
-                uuid;
-        }
-
-        // objek untuk dikirim ke database
-        const bendaModel = {
-            id: docID,
-            name: fields.name,
-            qrImage: qrImage.size == 0 ? "" : imageUrl,
-            pdfFile: pdfFile.size == 0 ? "" : pdfUrl,
-        };
-
-        await bendaRef
-            .doc(docID)
-            .set(bendaModel, { merge: true })
-            .then((value) => {
-                // return respon ke pengguna
-                res.status(200).send({
-                    message: "Data telah berhasil dimasukan",
-                    data: bendaModel,
-                    error: {},
-                });
-            });
+      if (discnt) {
+        return res.status(400).json({
+          message: "Terdapat error pada saat pengunggahan file",
+          data: {},
+          error: discnt,
         });
-    } 
-    
-    catch (discnt) {
-        res.send({
-            message: "Terjadi error",
-            data: {},
-            error: discnt
+      }
+      const bucket = storage.bucket("gs://dbnaviku.appspot.com");
+
+      if (qrImage.size & pdfFile.size == 0) {
+        // tida ada yang dikerjakan
+      } else {
+        const imageRespons = await bucket.upload(qrImage.path, {
+          destination: `benda/${qrImage.name}`,
+          resumable: true,
+          metadata: {
+            metadata: {
+              firebaseStorageDownloadTokens: uuid,
+            },
+          },
         });
-    }
+
+        const pdfRespons = await bucket.upload(pdfFile.path, {
+          destination: `benda/${pdfFile.name}`,
+          resumable: true,
+          metadata: {
+            metadata: {
+              firebaseStorageDownloadTokens: uuid,
+            },
+          },
+        });
+
+        // url gambar qr
+        imageUrl =
+          downloadPath +
+          encodeURIComponent(imageRespons[0].name) +
+          "?alt=media&token=" +
+          uuid;
+
+        pdfUrl =
+          downloadPath +
+          encodeURIComponent(pdfRespons[0].name) +
+          "?alt=media&token=" +
+          uuid;
+      }
+
+      // objek untuk dikirim ke database
+      const bendaModel = {
+        id: docID,
+        name: fields.name,
+        qrImage: qrImage.size == 0 ? "" : imageUrl,
+        pdfFile: pdfFile.size == 0 ? "" : pdfUrl,
+      };
+
+      await bendaRef
+          .doc(docID)
+          .set(bendaModel, {merge: true})
+          .then((value) => {
+            // return respon ke pengguna
+            res.status(200).send({
+              message: "Data telah berhasil dimasukan",
+              data: bendaModel,
+              error: {},
+            });
+          });
+    });
+  } catch (discnt) {
+    res.send({
+      message: "Terjadi error",
+      data: {},
+      error: discnt,
+    });
+  }
 });
 
 // ================== POST file rar =================
-app.post('/createAllBenda', async (req, res) => {
-    const form = new formidable.IncomingForm({ multiples: true });
-    
-    try {
-        form.parse(req, async (discnt, fields, files) => {
-            let uuid = UUID();
-            var downloadPath =
-                "https://firebasestorage.googleapis.com/v0/b/dbnaviku.appspot.com/o/"
+app.post("/createAllBenda", async (req, res) => {
+  const form = new formidable.IncomingForm({multiples: true});
 
-        const rarFile = files.rarFile;
+  try {
+    form.parse(req, async (discnt, fields, files) => {
+      const uuid = new UUID();
+      const downloadPath =
+        "https://firebasestorage.googleapis.com/v0/b/dbnaviku.appspot.com/o/";
 
-        // url untuk file rar yang diunggah 
-        let rarUrl;
+      const rarFile = files.rarFile;
 
-        const docID = bendaRef.doc().id;
+      // url untuk file rar yang diunggah
+      let rarUrl;
 
-        if(discnt) {
-            return res.status(400).json({
-                message: "Terdapat error pada saat pengunggahan file",
-                data: {},
-                error: discnt,
-              });
-        }
-        const bucket = storage.bucket("gs://dbnaviku.appspot.com");
+      const docID = bendaRef.doc().id;
 
-        if (rarFile == 0) {
-            //  tida ada yang dikerjakan 
-        } 
-        else {
-            const rarRespons = await bucket.upload(rarFile.path, {
-                destination: `benda/${rarFile.name}`,
-                resumable: true,
-                metadata: {
-                    metadata: {
-                        firebaseStorageDownloadTokens: uuid,
-                    },
-                },
-            });
-
-            // url gambar qr
-            rarUrl = 
-                downloadPath + 
-                encodeURIComponent(rarRespons[0].name) + 
-                "?alt=media&token=" + 
-                uuid;
-        }
-
-        // objek untuk dikirim ke database
-        const bendaModel = {
-            id: docID,
-            rarFile: rarFile.size == 0 ? "" : rarUrl,
-        };
-
-        await bendaRef
-            .doc(docID)
-            .set(bendaModel, { merge: true })
-            .then((value) => {
-                // return respon ke pengguna
-                res.status(200).send({
-                    message: "Data telah berhasil dimasukan",
-                    data: bendaModel,
-                    error: {},
-                });
-            });
+      if (discnt) {
+        return res.status(400).json({
+          message: "Terdapat error pada saat pengunggahan file",
+          data: {},
+          error: discnt,
         });
-    } 
-    
-    catch (discnt) {
-        res.send({
-            message: "Terjadi error",
-            data: {},
-            error: discnt
+      }
+      const bucket = storage.bucket("gs://dbnaviku.appspot.com");
+
+      if (rarFile == 0) {
+        // tida ada yang dikerjakan
+      } else {
+        const rarRespons = await bucket.upload(rarFile.path, {
+          destination: `benda/${rarFile.name}`,
+          resumable: true,
+          metadata: {
+            metadata: {
+              firebaseStorageDownloadTokens: uuid,
+            },
+          },
         });
-    }
+
+        // url gambar qr
+        rarUrl =
+          downloadPath +
+          encodeURIComponent(rarRespons[0].name) +
+          "?alt=media&token=" +
+          uuid;
+      }
+
+      // objek untuk dikirim ke database
+      const bendaModel = {
+        id: docID,
+        rarFile: rarFile.size == 0 ? "" : rarUrl,
+      };
+
+      await bendaRef
+          .doc(docID)
+          .set(bendaModel, {merge: true})
+          .then((value) => {
+            // return respon ke pengguna
+            res.status(200).send({
+              message: "Data telah berhasil dimasukan",
+              data: bendaModel,
+              error: {},
+            });
+          });
+    });
+  } catch (discnt) {
+    res.send({
+      message: "Terjadi error",
+      data: {},
+      error: discnt,
+    });
+  }
 });
 
 
 // ================== get all data benda =================
-app.get('/benda', async (req, res, next) => {
-    await bendaRef.get().then((value) => {
-        const data = value.docs.map((doc) => doc.data());
-        res.status(200).send({
-            message: "Fetch All Benda",
-            data: data,
-        });
+app.get("/benda", async (req, res, next) => {
+  await bendaRef.get().then((value) => {
+    const data = value.docs.map((doc) => doc.data());
+    res.status(200).send({
+      message: "Fetch All Benda",
+      data: data,
     });
+  });
 });
 
-// ================== get benda ================= 
-app.get('/benda/:id', async (req, res, next) => {
-    await bendaRef 
-    .where("id", "==", req.params.id)
-    .get()
-    .then((value) => {
+// ================== get benda =================
+app.get("/benda/:id", async (req, res, next) => {
+  await bendaRef
+      .where("id", "==", req.params.id)
+      .get()
+      .then((value) => {
         const data = value.docs.map((doc) => doc.data());
         res.status(200).send({
-            message: "Data benda",
-            data: data ,
-        })
-    })
+          message: "Data benda",
+          data: data,
+        });
+      });
 });
 
-
-//                   ==================================== ANGKA ===================================                   \\
+// ================= ANGKA ================= \\
 // ================== POST DATA ANGKA =================
-app.post('/createAngka', async (req, res) => {
-    const form = new formidable.IncomingForm({ multiples: true });
+app.post("/createAngka", async (req, res) => {
+  const form = new formidable.IncomingForm({multiples: true});
 
-    try {
-        form.parse(req, async (discnt, fields, files) => {
-            let uuid = UUID();
-            var downloadPath =
-                "https://firebasestorage.googleapis.com/v0/b/gs://dbnaviku.appspot.com/o/"
+  try {
+    form.parse(req, async (discnt, fields, files) => {
+      const uuid = new UUID();
+      const downloadPath =
+        "https://firebasestorage.googleapis.com/v0/b/gs://dbnaviku.appspot.com/o/";
 
-        const qrImage = files.qrImage;
-        const pdfFile = files.pdfFile;
+      const qrImage = files.qrImage;
+      const pdfFile = files.pdfFile;
 
-        // url untuk gambar yang diunggah 
-        let imageUrl;
-        let pdfUrl;
+      // url untuk gambar yang diunggah
+      let imageUrl;
+      let pdfUrl;
 
-        const docID = angkaRef.doc().id;
+      const docID = angkaRef.doc().id;
 
-        if(discnt) {
-            return res.status(400).json({
-                message: "Terdapat error pada saat pengunggahan file",
-                data: {},
-                error: discnt,
-              });
-        }
-        const bucket = storage.bucket("gs://dbnaviku.appspot.com")
-
-        if (qrImage.size & pdfFile.size == 0) {
-            //  tida ada yang dikerjakan 
-        } 
-        else {
-            const imageRespons = await bucket.upload(qrImage.path, {
-                destination: `angka/${qrImage.name}`,
-                resumable: true,
-                metadata: {
-                    metadata: {
-                        firebaseStorageDownloadTokens: uuid,
-                    },
-                },
-            });
-
-            const pdfRespons = await bucket.upload(pdfFile.path, {
-                destination: `angka/${pdfFile.name}`,
-                resumable: true,
-                metadata: {
-                    metadata: {
-                        firebaseStorageDownloadTokens: uuid,
-                    },
-                },
-            });
-
-            // url gambar qr
-            imageUrl = 
-                downloadPath + 
-                encodeURIComponent(imageRespons[0].name) + 
-                "?alt=media&token=" + 
-                uuid;
-
-            pdfUrl = 
-                downloadPath + 
-                encodeURIComponent(pdfRespons[0].name) + 
-                "?alt=media&token=" + 
-                uuid;
-        }
-
-        // objek untuk dikirim ke database
-        const angkaModel = {
-            id: docID,
-            name: fields.name,
-            qrImage: qrImage.size == 0 ? "" : imageUrl,
-            pdfFile: pdfFile.size == 0 ? "" : pdfUrl,
-        };
-
-        await angkaRef
-            .doc(docID)
-            .set(angkaModel, { merge: true })
-            .then((value) => {
-                // return respon ke pengguna
-                res.status(200).send({
-                    message: "Data telah berhasil dimasukan",
-                    data: angkaModel,
-                    error: {},
-                });
-            });
+      if (discnt) {
+        return res.status(400).json({
+          message: "Terdapat error pada saat pengunggahan file",
+          data: {},
+          error: discnt,
         });
-    } 
+      }
+      const bucket = storage.bucket("gs://dbnaviku.appspot.com");
 
-    catch (discnt) {
-        res.send({
-            message: "Terjadi error",
-            data: {},
-            error: discnt
+      if (qrImage.size & pdfFile.size == 0) {
+        // tida ada yang dikerjakan
+      } else {
+        const imageRespons = await bucket.upload(qrImage.path, {
+          destination: `angka/${qrImage.name}`,
+          resumable: true,
+          metadata: {
+            metadata: {
+              firebaseStorageDownloadTokens: uuid,
+            },
+          },
         });
-    }
+
+        const pdfRespons = await bucket.upload(pdfFile.path, {
+          destination: `angka/${pdfFile.name}`,
+          resumable: true,
+          metadata: {
+            metadata: {
+              firebaseStorageDownloadTokens: uuid,
+            },
+          },
+        });
+
+        // url gambar qr
+        imageUrl =
+          downloadPath +
+          encodeURIComponent(imageRespons[0].name) +
+          "?alt=media&token=" +
+          uuid;
+
+        pdfUrl =
+          downloadPath +
+          encodeURIComponent(pdfRespons[0].name) +
+          "?alt=media&token=" +
+          uuid;
+      }
+
+      // objek untuk dikirim ke database
+      const angkaModel = {
+        id: docID,
+        name: fields.name,
+        qrImage: qrImage.size == 0 ? "" : imageUrl,
+        pdfFile: pdfFile.size == 0 ? "" : pdfUrl,
+      };
+
+      await angkaRef
+          .doc(docID)
+          .set(angkaModel, {merge: true})
+          .then((value) => {
+            // return respon ke pengguna
+            res.status(200).send({
+              message: "Data telah berhasil dimasukan",
+              data: angkaModel,
+              error: {},
+            });
+          });
+    });
+  } catch (discnt) {
+    res.send({
+      message: "Terjadi error",
+      data: {},
+      error: discnt,
+    });
+  }
 });
 
 // ================== get all data ANGKA =================
-app.get('/angka', async (req, res, next) => {
-    await angkaRef.get().then((value) => {
-        const data = value.docs.map((doc) => doc.data());
-        res.status(200).send({
-            message: "Fetch All Benda",
-            data: data,
-        });
+app.get("/angka", async (req, res, next) => {
+  await angkaRef.get().then((value) => {
+    const data = value.docs.map((doc) => doc.data());
+    res.status(200).send({
+      message: "Fetch All Benda",
+      data: data,
     });
+  });
 });
 
-// ================== get ANGKA ================= 
-app.get('/angka/:id', async (req, res, next) => {
-    await angkaRef 
-    .where("id", "==", req.params.id)
-    .get()
-    .then((value) => {
+// ================== get ANGKA =================
+app.get("/angka/:id", async (req, res, next) => {
+  await angkaRef
+      .where("id", "==", req.params.id)
+      .get()
+      .then((value) => {
         const data = value.docs.map((doc) => doc.data());
         res.status(200).send({
-            message: "Data benda",
-            data: data ,
-        })
-    })
+          message: "Data benda",
+          data: data,
+        });
+      });
 });
-
-
 // export link endpoint
 exports.api = functions.https.onRequest(app);
