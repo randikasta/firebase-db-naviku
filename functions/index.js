@@ -24,7 +24,7 @@ const bangunanRef = kategoriRef.doc("bangunan").collection("bangunan");
 const bendaRef = kategoriRef.doc("benda").collection("benda");
 const rambuRef = kategoriRef.doc("rambu").collection("rambu");
 const angkaRef = kategoriRef.doc("angka").collection("angka");
-const rarRef = kategoriRef.doc("rarfile").collection("rarfile");
+const zipRef = kategoriRef.doc("zipfile").collection("zipfile");
 
 // menyambungkan storage yang ada pada firebase
 const storage = new Storage({
@@ -39,20 +39,20 @@ app.get("/", async (req, res, next) => {
     const bendaSnapshot = bendaRef.get();
     const rambuSnapshot = rambuRef.get();
     const angkaSnapshot = angkaRef.get();
-    const rarSnapshot = rarRef.get();
+    const zipSnapshot = zipRef.get();
 
     const [ruanganData,
       bangunanData,
       bendaData,
       rambuData,
       angkaData,
-      rarData] = await Promise.all([
+      zipData] = await Promise.all([
       ruanganSnapshot,
       bangunanSnapshot,
       bendaSnapshot,
       rambuSnapshot,
       angkaSnapshot,
-      rarSnapshot,
+      zipSnapshot,
     ]);
 
     const responseData = {
@@ -61,7 +61,7 @@ app.get("/", async (req, res, next) => {
       benda: [],
       rambu: [],
       angka: [],
-      rar: [],
+      zip: [],
     };
 
     ruanganData.forEach((doc) => {
@@ -89,9 +89,9 @@ app.get("/", async (req, res, next) => {
       responseData.angka.push(data);
     });
 
-    rarData.forEach((doc) => {
+    zipData.forEach((doc) => {
       const data = doc.data();
-      responseData.rar.push(data);
+      responseData.zip.push(data);
     });
 
     res.status(200).send({
@@ -708,8 +708,8 @@ app.get("/angka/:id", async (req, res, next) => {
       });
 });
 
-// <><><><><><><><<> RAR FILE POST <><><><><><><><<> \\
-// ================== post file rar SEMUA file =================
+// <><><><><><><><<> ZIP FILE POST <><><><><><><><<> \\
+// ================== post file zip SEMUA file =================
 app.post("/createallCode", async (req, res) => {
   const form = new formidable.IncomingForm({multiples: true});
 
@@ -719,12 +719,12 @@ app.post("/createallCode", async (req, res) => {
       const downloadPath =
         "https://firebasestorage.googleapis.com/v0/b/dbnaviku.appspot.com/o/";
 
-      const rarFile = files.rarFile;
+      const zipFile = files.zipFile;
 
-      // url untuk file rar yang diunggah
-      let rarUrl;
+      // url untuk file zip yang diunggah
+      let zipUrl;
 
-      const docID = rarRef.doc().id;
+      const docID = zipRef.doc().id;
 
       if (discnt) {
         return res.status(400).json({
@@ -735,11 +735,11 @@ app.post("/createallCode", async (req, res) => {
       }
       const bucket = storage.bucket("gs://dbnaviku.appspot.com");
 
-      if (rarFile == 0) {
+      if (zipFile == 0) {
         // tida ada yang dikerjakan
       } else {
-        const rarRespons = await bucket.upload(rarFile.path, {
-          destination: `kategori/rarfile/${rarFile.name}`,
+        const zipRespons = await bucket.upload(zipFile.path, {
+          destination: `kategori/zipfile/${zipFile.name}`,
           resumable: true,
           metadata: {
             metadata: {
@@ -749,28 +749,28 @@ app.post("/createallCode", async (req, res) => {
         });
 
         // url gambar qr
-        rarUrl =
+        zipUrl =
           downloadPath +
-          encodeURIComponent(rarRespons[0].name) +
+          encodeURIComponent(zipRespons[0].name) +
           "?alt=media&token=" +
           uuid;
       }
 
       // objek untuk dikirim ke database
-      const rarModel = {
+      const zipModel = {
         id: docID,
         name: fields.name,
-        rarFile: rarFile.size == 0 ? "" : rarUrl,
+        zipFile: zipFile.size == 0 ? "" : zipUrl,
       };
 
-      await rarRef
+      await zipRef
           .doc(docID)
-          .set(rarModel, {merge: true})
+          .set(zipModel, {merge: true})
           .then((value) => {
             // return respon ke pengguna
             res.status(200).send({
               message: "Data telah berhasil dimasukan",
-              data: rarModel,
+              data: zipModel,
               error: {},
             });
           });
@@ -784,26 +784,26 @@ app.post("/createallCode", async (req, res) => {
   }
 });
 
-// ================== get all data rar =================
-app.get("/rar", async (req, res, next) => {
-  await rarRef.get().then((value) => {
+// ================== get all data zip =================
+app.get("/zip", async (req, res, next) => {
+  await zipRef.get().then((value) => {
     const data = value.docs.map((doc) => doc.data());
     res.status(200).send({
-      message: "Fetch All rar file",
+      message: "Fetch All zip file",
       data: data,
     });
   });
 });
 
-// ================== get detail data rarfile =================
-app.get("/rar/:id", async (req, res, next) => {
-  await rarRef
+// ================== get detail data zipfile =================
+app.get("/zip/:id", async (req, res, next) => {
+  await zipRef
       .where("id", "==", req.params.id)
       .get()
       .then((value) => {
         const data = value.docs.map((doc) => doc.data());
         res.status(200).send({
-          message: "Data rar",
+          message: "Data zip",
           data: data,
         });
       });
